@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	  xmlns:th="http://www.thymeleaf.org"
+	  lang="ja">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="" />
+	<meta name="author" content="" />
+	<title>polly-example</title>
+	
+	<link rel="stylesheet" href="css/chat.css" />
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+	
+	<!-- Bootstrap Core CSS -->
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous" />
+	
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous" />
+	
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+	<script>
+		/*
+		 * This sample code requires a web browser with support for both the
+		 * HTML5 and ECMAScript 5 standards; the following is a non-comprehensive
+		 * list of compliant browsers and their minimum version:
+		 *
+		 * - Chrome 23.0+
+		 * - Firefox 21.0+
+		 * - Internet Explorer 9.0+
+		 * - Edge 12.0+
+		 * - Opera 15.0+
+		 * - Safari 6.1+
+		 * - Android (stock web browser) 4.4+
+		 * - Chrome for Android 51.0+
+		 * - Firefox for Android 48.0+
+		 * - Opera Mobile 37.0+
+		 * - iOS (Safari Mobile and Chrome) 3.2+
+		 * - Internet Explorer Mobile 10.0+
+		 * - Blackberry Browser 10.0+
+		 */
+
+		// Mapping of the OutputFormat parameter of the SynthesizeSpeech API
+		// and the audio format strings understood by the browser
+		var AUDIO_FORMATS = {
+//			'ogg_vorbis': 'audio/ogg',
+//			'pcm': 'audio/wave; codecs=1',
+			'mp3': 'audio/mpeg'
+		};
+
+		/**
+		 * Returns a list of audio formats supported by the browser
+		 */
+		function getSupportedAudioFormats(player) {
+			return Object.keys(AUDIO_FORMATS)
+				.filter(function (format) {
+					var supported = player.canPlayType(AUDIO_FORMATS[format]);
+					return supported === 'probably' || supported === 'maybe';
+				});
+		}
+		
+		function appendLine(owner, text) {
+			// create new line
+			var pElm = document.createElement('p');
+			var spanElm = document.createElement('span');
+			spanElm.innerHTML = text;
+			
+			if(owner==='a3rt') {
+				pElm.classList.add('other-line','a3rt');
+				spanElm.classList.add('other-toge');
+			} else {
+				pElm.classList.add('my-line');
+				spanElm.classList.add('my-toge');
+			}
+			pElm.appendChild(spanElm);
+			
+			// line append to table
+			var tdElm = document.getElementsByTagName('td')[0];
+			tdElm.appendChild(pElm);
+		}
+		
+
+		// Initialize the application when the DOM is loaded and ready to be
+		// manipulated
+		document.addEventListener("DOMContentLoaded", function () {
+			var text = document.getElementById('text'),
+				input = document.getElementById('input'),
+				player = document.getElementById('player'),
+				talkBtn = document.getElementById('talk-btn'),
+				supportedFormats = getSupportedAudioFormats(player);
+
+			// Display a message and don't allow submitting the form if the
+			// browser doesn't support any of the available audio formats
+			if (supportedFormats.length === 0) {
+				talkBtn.disabled = true;
+				alert('The web browser in use does not support any of the' +
+					  ' available audio formats. Please try with a different' +
+					  ' one.');
+			}
+			
+			// 
+			talkBtn.addEventListener('click', function (event) {
+				// Validate the fields in the form, display a message if
+				// unexpected values are encountered
+				if (text.value.length === 0) {
+					alert('Please fill in all the fields.');
+				} else {
+					// 質問内容を会話に反映
+					appendLine('guest', text.value);
+					
+					// 返答を取得
+					//var question = encodeURIComponent(text.value);
+					var question = text.value;
+					// 入力エリア初期化
+					text.value="";
+					$.ajax({
+						type: 'GET',
+						url: '/question',
+						data: {text: question}
+					}).then((...args) => {
+						const [data, textStatus, jqXHR] = args;
+						// 質問内容を会話に反映
+						appendLine('a3rt', data);
+						
+						player.src = '/speech?text=' + encodeURIComponent(data);
+						player.play();
+					}).catch((...args) => {
+						const [jqXHR, textStatus, errorThrown] = args;
+					}).then(() => {
+						
+					});
+				}
+			});
+			
+			// Play the audio stream when the form is submitted successfully
+			input.addEventListener('submit', function (event) {
+				// Validate the fields in the form, display a message if
+				// unexpected values are encountered
+				if (text.value.length === 0) {
+					alert('Please fill in all the fields.');
+				} else {
+					// Point the player to the streaming server
+					player.src = '/question?text=' +
+						encodeURIComponent(text.value);
+					player.play();
+				}
+
+				// Stop the form from submitting,
+				// Submitting the form is allowed only if the browser doesn't
+				// support Javascript to ensure functionality in such a case
+				event.preventDefault();
+			});
+		});
+	</script>
+</head>
+<body>
+	<div class="container">
+		<div class="row justify-content-start">
+			<!-- chat風table -->
+			<div class="row entry-content">
+				<div class="col-sm-6">
+					<table style="width:100%;background:#eee">
+						<tr>
+							<td>
+							</td>
+						</tr>
+					</table>
+					<div style="clear:both;"></div>
+				</div>
+			</div>
+			<!-- /chat風table -->
+			
+			<form action="/question" method="GET" role="form" class="form-horizontal" id="input">
+				<div class="form-group">
+					<div class="col-sm-6">
+						<textarea class="form-control" id="text" maxlength="1000" placeholder="Type some text here..." value=""></textarea>
+						<input type="button" value="talk" class="btn btn-default btn-block" id="talk-btn" />
+					</div>
+				</div>
+			</form>
+			
+			
+			<audio id="player"></audio>
+			<!-- /音声再生用 -->
+		</div>
+	</div>
+</body>
+</html>
